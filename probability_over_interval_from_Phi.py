@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 30 10:15:23 2018
+Revised on Sat Mar 31 14:30:23 2018
 @author: Dirk
 
 Calculates the area under the Gaussian bell curve between
-the upper and lower limit (defining the intervale).
+the upper and lower limit (defining the interval). Uses the
+cumulative distribution function phi(x) to calculate values.
 
 INPUT: 
     left entry field takes the lower limit (set to -infinity if left empty)
@@ -15,90 +16,118 @@ OUTPUT:
     interval defined by the lower and upper limit
 """
 
-import tkinter as tk
 import math
+import tkinter as tk
 
 class MainApplication(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
-        LabelIntroField(root)
-        low = EntryFieldLowerLimit(root)
-        up = EntryFieldUpperLimit(root)
-        lab = LabelField(root, low, up) 
-        ButtonField(root, low, up, lab) 
+        self.header = LabelHeader(self)
+        self.photo = LabelPhotoField(self)      
+        self.intro = LabelIntroField(self)
+        self.low = EntryFieldLowerLimit(self)
+        self.up = EntryFieldUpperLimit(self)
+        CheckButtonField(self)
+        self.lab = LabelField(self, self.low, self.up) 
+        ButtonField(self, self.low, self.up, self.lab)
+
+class LabelHeader(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent        
+        self.toplabel = tk.Label(root, text='Gaussian Normal Distribution', \
+                                 font=(None, 14))
+        self.toplabel.grid(row=0, column=0, columnspan = 2)
         
-class LabelIntroField():
+class LabelPhotoField(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        self.bild = tk.PhotoImage(file='gauss.gif')
+        self.photoLabel = tk.Label(root, image=self.bild)
+        self.photoLabel .grid(row=1, column=0, columnspan = 2)
+      
+class LabelIntroField(tk.Frame):
     def __init__(self, parent):
         self.parent = parent
         str = 'Calculate probability from lower and upper limit '
-        str = str + '\nwithin Normal Distribution\n'
-        str = str + 'Leave field empty if -infinity or +infinity'
-        self.label = tk.Label(None, text = str)
-        self.label.grid(row=0, column=0, columnspan = 2)
+        str = str + '\nwithin Normal Distribution\n\n'
+        str = str + 'Left limit              Right limit\n' 
+        str = str + 'Leave empty if -\u221E        '
+        str = str + '      Leave empty if +\u221E'
+        self.label = tk.Label(root, text = str)
+        self.label.grid(row=2, column=0, columnspan = 2)
                                  
-class EntryFieldLowerLimit():
+class EntryFieldLowerLimit(tk.Frame):
     def __init__(self, parent):
         self.parent = parent
         self.entrylow = tk.StringVar()
-        self.entrylow = tk.Entry(None, textvariable = self.entrylow) 
-        self.entrylow.grid(row=1, column=0)
+        self.entrylow = tk.Entry(root, textvariable = self.entrylow)
+        self.entrylow.grid(row=3, column=0)
         
-class EntryFieldUpperLimit():
+class EntryFieldUpperLimit(tk.Frame):
     def __init__(self, parent):
         self.parent = parent
         self.entryhigh = tk.StringVar()
-        self.entryhigh = tk.Entry(None, textvariable = self.entryhigh)
-        self.entryhigh.grid(row=1, column=1)
+        self.entryhigh = tk.Entry(root, textvariable = self.entryhigh)
+        self.entryhigh.grid(row=3, column=1)
 
-class ButtonField():
+class ButtonField(tk.Frame):
     def __init__(self, parent, fromEntryLow, fromEntryHigh, fromLabelField):
         self.parent = parent
         self.fromEntryLow = fromEntryLow
         self.fromEntryLow = fromEntryHigh
         self.fromLabelField = fromLabelField
-        self.button = tk.Button(None, text = '    OK    ',
+        self.button = tk.Button(root, text = '        OK        ',
                       command = self.fromLabelField.extract)
-        self.button.grid(row=2, column=0, columnspan = 2)
-
-class LabelField():
+        self.button.grid(row=4, column=1)
+        self.cancelButton = tk.Button(root, text='Cancel', \
+            width=10, command=root.destroy)
+        self.cancelButton.grid(row=4, column=0)
+        
+class LabelField(tk.Frame):
     def __init__(self, parent, fromEntryLow, fromEntryHigh):
         self.parent = parent
         self.fromEntryLow = fromEntryLow
         self.fromEntryHigh = fromEntryHigh
-        self.label = tk.Label(None, text = '')
-        self.label.grid(row=3, column=0, columnspan = 2)
+        self.label = tk.Label(root, text = '', font=(None, 12), pady = 5)
+        self.label.grid(row=5, column=0, columnspan = 2)
         
     def extract(self): 
-        temp1 = self.fromEntryLow.entrylow.get()
-        temp2 = self.fromEntryHigh.entryhigh.get()
-        if temp1 is '' and temp2 is not '':
-            try:
-                res = LabelField.phi(-float(temp2))
-            except ValueError:
-                self.label.config(text = 'Field 2 is not a number, try again')
+        lower = self.fromEntryLow.entrylow.get()
+        upper = self.fromEntryHigh.entryhigh.get()
+        try:
+            reslow = float(lower)
+        except ValueError:
+            self.label.config(text = 'Field 1 is not a number, try again')          
+        try:
+            resup = float(upper)
+        except ValueError:
+            self.label.config(text = 'Field 2 is not a number, try again')
+        
+        # Case: lower limit = -infinity and upper limit is number
+        if lower is '' and upper is not '':
+            res = LabelField.phi(-resup)
             result = 1.0 - res
-        elif temp1 is not '' and temp2 is '':
-            try:
-                res = LabelField.phi(float(temp1))
-            except ValueError:
-                self.label.config(text = 'Field 1 is not a number, try again')
+            
+        # Case: lower limit is number and upper limit = +infinity
+        elif lower is not '' and upper is '':
+            res = LabelField.phi(reslow)
             result = 1.0 - res
-        elif temp1 is not '' and temp2 is not '':
-            try:
-                res1 = LabelField.phi(float(temp1))
-                res2 = LabelField.phi(float(temp2))
-            except ValueError:
-                self.label.config(text = \
-                                  'Field 1 or 2 is not a number, try again')
-            result = res2 - res1
+            
+        # Case: lower and upper limit are numbers given by the user
+        elif lower is not '' and upper is not '':
+            result = LabelField.phi(resup) - LabelField.phi(reslow)
+        
+        # Case: lower limit = -infinity and upper limit = +infinity
         else:
             result = 1.0
+    
         self.label.config(text = 'Gaussian probability: '+ \
                           str(round(result, 4)))
 
     def phi(x):
-        ''' Taken from John D. Cook
+        ''' Calculates a value from the cumulative distribution function.
+            Taken from John D. Cook
             https://www.johndcook.com/blog/python_phi/'''
         # constants:
         a1 =  0.254829592
@@ -117,7 +146,6 @@ class LabelField():
         # A&S formula 7.1.26
         t = 1.0/(1.0 + p*x)
         y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*math.exp(-x*x)
-    
         return 0.5*(1.0 + sign*y)
         
 if __name__ == '__main__':
